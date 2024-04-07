@@ -1,16 +1,28 @@
 #!/bin/bash
 
-# Step 1: Check if Nginx is installed
-if ! command -v nginx &> /dev/null; then
-    sudo apt update
-    sudo apt install nginx -y
+# Check Nginx status
+systemctl status nginx | grep running >/dev/null 2>&1
+if [[ $? -ne 0 ]]; then
+  echo "Error: Nginx is not running. Please start it manually."
+  exit 1
+fi
 
+# Check for conflicting process on port 80
+process=$(netstat -tlpn | grep ":80\sTCP.*LISTEN")
+if [[ ! -z "$process" ]]; then
+  pid=$(echo "$process" | awk '{print $7}')
+  echo "Warning: Another process (PID: $pid) is using port 80."
+  read -p "Stop this process (y/N)? " answer
+  if [[ "$answer" =~ ^[Yy]$ ]]; then
+    kill $pid
+    echo "Process stopped."
+  fi
+fi
 
-# Step 2: Check if Nginx is already listening on port 80
-if ! sudo lsof -i :80 | grep LISTEN &> /dev/null; then
-    # Step 3: Configure Nginx to listen on port 80
-    sudo sed -i 's/listen 80 default_server;/listen 80;/g' /etc/nginx/nginx.conf
+# Fix Nginx config (modify as needed for your specific configuration)
+sed -i 's/listen [^:]*:\([0-9]*\);/listen 80;/' /etc/nginx/nginx.conf
 
-    # Step 4: Restart Nginx service
-    sudo systemctl restart nginx
+# Restart Nginx
+systemctl restart nginx
 
+echo "Nginx configuration fixed (listening on port 80)."
