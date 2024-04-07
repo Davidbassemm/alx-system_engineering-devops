@@ -1,28 +1,25 @@
 #!/bin/bash
 
-# Check Nginx status
-systemctl status nginx | grep running >/dev/null 2>&1
+# Check Nginx status (silent)
+systemctl status nginx >/dev/null 2>&1
 if [[ $? -ne 0 ]]; then
-  echo "Error: Nginx is not running. Please start it manually."
-  exit 1
+  exit 1  # Exit with failure code if not running
 fi
 
-# Check for conflicting process on port 80
+# Check for conflicting process on port 80 (silent)
 process=$(netstat -tlpn | grep ":80\sTCP.*LISTEN")
+
+# Stop conflicting process if found (silent)
 if [[ ! -z "$process" ]]; then
   pid=$(echo "$process" | awk '{print $7}')
-  echo "Warning: Another process (PID: $pid) is using port 80."
-  read -p "Stop this process (y/N)? " answer
-  if [[ "$answer" =~ ^[Yy]$ ]]; then
-    kill $pid
-    echo "Process stopped."
-  fi
+  kill $pid >/dev/null 2>&1
 fi
 
-# Fix Nginx config (modify as needed for your specific configuration)
+# Fix Nginx config (modify as needed)
 sed -i 's/listen [^:]*:\([0-9]*\);/listen 80;/' /etc/nginx/nginx.conf
 
-# Restart Nginx
-systemctl restart nginx
+# Restart Nginx (silent)
+systemctl restart nginx >/dev/null 2>&1
 
-echo "Nginx configuration fixed (listening on port 80)."
+# No output messages
+exit 0
